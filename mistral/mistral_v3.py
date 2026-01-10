@@ -1,45 +1,18 @@
 #%%
-#verify current working directory is correct
-import sys
-from pathlib import Path
-
-# parent_dir_path = os.getenv("project_dir_path") + "sft_mistral_7B"
-# print(parent_dir_path)
-
-# print("Current working directory:", os.getcwd())
-# os.chdir(parent_dir_path)
-
-# Add parent directory (sft_mistral_7B) to Python path.  adds the grandparent directory of the currently running script to the Python interpreter's module search path. This allows the script to import modules located in that grandparent directory as if they were in the current working directory. 
-
-import sys
-import os
-from pathlib import Path
-
-# # Safer way to use your env var
-project_root = os.getenv("project_dir_path")
-if project_root:
-    full_path = Path(project_root) / "sft_mistral_7B"
-    sys.path.append(str(full_path.resolve()))
-
-print(sys.path)
-
-
-#%%
 # imports
+import sys
+from pathlib import Path
 from datasets import load_dataset, load_from_disk
 from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer
 from peft import LoraConfig, get_peft_model, TaskType
 import torch
 import os
 from dotenv import load_dotenv
-from utils import TruncatingCollator
-import pprint
 
-#%%
-# Load environment variables
-load_dotenv()
-hf_token = os.getenv("hf_token")
-print(hf_token)
+# NEW: Import from your package
+from mistral.config import CUSTOM_TOKENIZER_V2_PATH, DATASET_DIR
+from mistral.utils import TruncatingCollator
+from mistral.config import HF_TOKEN
 
 
 #%%
@@ -51,7 +24,7 @@ model_params = {
     "pretrained_model_name_or_path": model_name,
     "dtype": torch.bfloat16,
     "device_map": "auto",
-    "token": hf_token
+    "token": HF_TOKEN
 }
 
 # check if cuda is available. If so add flash attention to model parameters
@@ -66,13 +39,13 @@ else:
 model = AutoModelForCausalLM.from_pretrained(**model_params)
 
 
-
 #%%
 # load customized tokenizer and verify special tokens and chat template
-# tokenizer = AutoTokenizer.from_pretrained("mistral_7B_customized_tokenizer_v2")
 
-tokenizer_path = Path("mistral_7B_customized_tokenizer_v2").resolve()
-tokenizer = AutoTokenizer.from_pretrained(str(tokenizer_path))
+tokenizer = AutoTokenizer.from_pretrained(
+    str(CUSTOM_TOKENIZER_V2_PATH),
+    local_files_only=True
+)
 
 
 print(tokenizer.all_special_tokens)
@@ -92,8 +65,9 @@ model.resize_token_embeddings(len(tokenizer))
 
 # %%
 # load data sets
-train_data = load_from_disk('./dataset_ultrachat/train_dataset_tokenized_v2')
-eval_data = load_from_disk('./dataset_ultrachat/test_dataset_tokenized_v2')
+train_data = load_from_disk(str(DATASET_DIR / 'train_dataset_tokenized_v2'))
+
+train_data = load_from_disk(str(DATASET_DIR / 'test_dataset_tokenized_v2'))
 
 
 # %%

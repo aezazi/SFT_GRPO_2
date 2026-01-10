@@ -16,6 +16,8 @@ CHECKPOINTS_DIR = MISTRAL_ROOT / "checkpoints"
 LOGS_DIR = MISTRAL_ROOT / "logs"
 EXPERIMENTS_DIR = MISTRAL_ROOT / "experiments"
 
+
+
 # Tokenizer paths
 CUSTOM_TOKENIZER_V1_PATH = MISTRAL_ROOT / "mistral_7B_customized_tokenizer"
 CUSTOM_TOKENIZER_V2_PATH = MISTRAL_ROOT / "mistral_7B_customized_tokenizer_v2"
