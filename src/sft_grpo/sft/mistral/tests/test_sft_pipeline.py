@@ -1,19 +1,19 @@
 
 import sys
 from pathlib import Path
-
-
-
-#%%
 import pytest
 import torch
 from transformers import AutoTokenizer
 
-# NEW: Import from your package
-from mistral.utils import format_tokenize_with_spans, TruncatingCollator
-from mistral.config import CUSTOM_TOKENIZER_V2_PATH
+# UPDATED: Use the full package namespace
+from sft_grpo.sft.mistral import mistral_sft_utils as utils
+from sft_grpo.sft.mistral.mistral_config import CUSTOM_TOKENIZER_V2_PATH
 
 #%%
+# If your functions are inside mistral_sft_utils, call them like this:
+format_tokenize_with_spans = utils.format_tokenize_with_spans
+TruncatingCollator = utils.TruncatingCollator
+
 # --------------------
 # Fixtures
 # --------------------

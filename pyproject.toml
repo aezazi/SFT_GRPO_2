@@ -32,8 +32,8 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["mistral*", "llama*", "shared*"]
+where = ["src"]
+include = ["sft_grpo*"]
 
 [tool.black]
 line-length = 100
@@ -45,5 +45,5 @@ select = ["E", "F", "I"]
 ignore = ["E501"]
 
 [tool.pytest.ini_options]
-testpaths = ["mistral/tests", "llama/tests"]
-python_files = ["test_*.py"]
+testpaths = ["src/sft_grpo/sft/mistral/tests", "src/sft_grpo/sft/llama/tests"]
+pythonpath = ["src"]
