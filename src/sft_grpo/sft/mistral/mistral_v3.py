@@ -7,22 +7,20 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments,
 from peft import LoraConfig, get_peft_model, TaskType
 import torch
 import os
-from dotenv import load_dotenv
+
 
 # NEW: Import from your package
-from mistral.config import CUSTOM_TOKENIZER_V2_PATH, DATASET_DIR
-from mistral.utils import TruncatingCollator
-from mistral.config import HF_TOKEN
-
-
+from sft_grpo.config import HF_TOKEN
+from sft_grpo.sft.mistral.mistral_config import CUSTOM_TOKENIZER_V2_PATH, DATASET_DIR, MODEL_NAME
+from sft_grpo.sft.mistral.mistral_sft_utils import TruncatingCollator
 
 #%%
 # Load base model
-model_name = "mistralai/Mistral-7B-v0.1"
+print(MODEL_NAME)
 
 # Define model base parameters in a dictionary
 model_params = {
-    "pretrained_model_name_or_path": model_name,
+    "pretrained_model_name_or_path": MODEL_NAME,
     "dtype": torch.bfloat16,
     "device_map": "auto",
     "token": HF_TOKEN
@@ -32,7 +30,7 @@ model_params = {
 if torch.cuda.is_available():
     model_params["attn_implementation"] = "flash_attention_2"
     print('cuda available')
-    print(model_name.config._attn_implementation)
+    print(MODEL_NAME.config._attn_implementation)
 else:
     print('cuda not available')
 
@@ -43,11 +41,7 @@ model = AutoModelForCausalLM.from_pretrained(**model_params)
 #%%
 # load customized tokenizer and verify special tokens and chat template
 
-tokenizer = AutoTokenizer.from_pretrained(
-    str(CUSTOM_TOKENIZER_V2_PATH),
-    local_files_only=True
-)
-
+tokenizer = AutoTokenizer.from_pretrained(CUSTOM_TOKENIZER_V2_PATH)
 
 print(tokenizer.all_special_tokens)
 print(tokenizer.all_special_ids)
@@ -66,9 +60,9 @@ model.resize_token_embeddings(len(tokenizer))
 
 # %%
 # load data sets
-train_data = load_from_disk(str(DATASET_DIR / 'train_dataset_tokenized_v2'))
+train_data = load_from_disk(DATASET_DIR / 'train_dataset_tokenized_v2')
 
-train_data = load_from_disk(str(DATASET_DIR / 'test_dataset_tokenized_v2'))
+eval_data = load_from_disk(DATASET_DIR / 'test_dataset_tokenized_v2')
 
 
 # %%
@@ -97,7 +91,7 @@ model.print_trainable_parameters()
 #%%
 # Updated Training Arguments optimized for single H200 GPU
 training_args = TrainingArguments(
-    output_dir="./checkpoints",
+    output_dir=str(MISTRAL_SFT_ROOT / "checkpoints"),
     overwrite_output_dir=True,
 
     remove_unused_columns=False,
@@ -192,7 +186,7 @@ class SFTLoggingCallback(TrainerCallback):
     """
     Custom callback for logging training metrics and collator statistics.
     """
-    def __init__(self, log_file="training_log.csv", collator=None):
+    def __init__(self, log_file=None, collator=None):
         self.log_file = log_file
         self.collator = collator
         self.start_time = None
@@ -427,8 +421,12 @@ class GenerationTestCallback(TrainerCallback):
 
 #%%
 # Instantiate callbacks
+
+# Ensure the logs directory exists before starting
+(DATASET_DIR.parent / "logs").mkdir(parents=True, exist_ok=True)
+
 logging_callback = SFTLoggingCallback(
-    log_file="./training_log.csv",
+    log_file=str(MISTRAL_SFT_ROOT / "logs" / "training_log.csv"),
     collator=data_collator
 )
 
@@ -444,37 +442,6 @@ generation_callback = GenerationTestCallback(
     generation_steps=500
 )
 
-#%%
-# DIAGNOSTIC: VERIFY FRESH MODEL
-print("\n" + "="*80)
-print("🔍 VERIFYING MODEL IS FRESH (before any training)")
-print("="*80)
-
-model.eval()
-losses = []
-for i in range(5):
-    test_examples = [train_data[j] for j in range(i*2, (i+1)*2)]
-    test_batch = data_collator(test_examples)
-    test_batch = {k: v.to('cuda') if torch.is_tensor(v) else v for k, v in test_batch.items()}
-    
-    with torch.no_grad():
-        outputs = model(**test_batch)
-        losses.append(outputs.loss.item())
-        print(f"Batch {i}: loss = {outputs.loss.item():.4f}")
-
-avg_loss = sum(losses) / len(losses)
-print(f"\nAverage starting loss: {avg_loss:.4f}")
-print(f"Perplexity: {torch.exp(torch.tensor(avg_loss)).item():.2f}")
-
-if avg_loss < 0.8:
-    print("❌ ERROR: Loss is suspiciously low (<0.8) - model may be contaminated!")
-    print("   Consider restarting the kernel.")
-elif avg_loss < 1.2:
-    print("✅ Normal for LoRA! Base model is capable, LoRA adapters initialized to zero.")
-else:
-    print("✅ Normal starting loss for base model.")
-
-print("="*80 + "\n")
 
 #%%
 # DIAGNOSTIC: Check labels in a batch
@@ -512,11 +479,11 @@ torch.cuda.empty_cache()
 
 # Reload from scratch
 model = AutoModelForCausalLM.from_pretrained(
-    model_name,
+    MODEL_NAME,
     dtype=torch.bfloat16,
     device_map="auto",
     attn_implementation="flash_attention_2",
-    token=hf_token
+    token=HF_TOKEN
 )
 
 # Resize for special tokens
@@ -586,10 +553,12 @@ def start_training():
     
     trainer.train()
 
-    # Save final model
-    print("\nSaving final model...")
-    trainer.save_model("./final_model")
-    tokenizer.save_pretrained("./final_model")
+    # Define final model path relative to Mistral root
+    final_model_path = MISTRAL_SFT_ROOT / "experiments" / "final_sft_model_v1"
+    
+    print(f"\nSaving final model to: {final_model_path}")
+    trainer.save_model(str(final_model_path))
+    tokenizer.save_pretrained(str(final_model_path))
 
     print("\n✅ Training complete!")
     print(f"Final model saved to: ./final_model")

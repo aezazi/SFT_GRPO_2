@@ -1,13 +1,4 @@
-#%%
-# verify current working directory is correct
-from pathlib import Path
 
-parent_dir_path = os.getenv("project_dir_path") + "sft_mistral_7B"
-print(parent_dir_path)
-
-print("Current working directory:", os.getcwd())
-os.chdir(parent_dir_path)
-print("Current working directory:", os.getcwd())
 
 #%%
 #imports
@@ -18,13 +9,14 @@ import os
 from dotenv import load_dotenv
 import multiprocessing
 from pathlib import Path
-from utils import format_tokenize_with_spans
+
+from sft_grpo.config import PACKAGE_ROOT, HF_TOKEN
+from sft_grpo.sft.mistral.mistral_config import MISTRAL_SFT_ROOT
+from sft_grpo.sft.mistral.mistral_sft_utils import format_tokenize_with_spans
 
 #%%
 # Load environment variables
-load_dotenv()
-hf_token = os.getenv("hf_token")
-print(hf_token)
+print(HF_TOKEN)
 
 if torch.cuda.is_available():
     print('cuda available')
@@ -37,12 +29,12 @@ model = AutoModelForCausalLM.from_pretrained(
     model_name,
     dtype=torch.bfloat16,
     device_map="auto",
-    token=hf_token
+    token=HF_TOKEN
 )
 
 #%%
 # load tokenizer
-tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
+tokenizer = AutoTokenizer.from_pretrained(model_name, token=HF_TOKEN)
 
 # Check if pad token exists
 if tokenizer.pad_token is None:
@@ -113,18 +105,29 @@ processed_eval = dataset_ultrachat["test_sft"].map(
 )
 
 
-
 #%%
+# print(type(str(MISTRAL_SFT_ROOT)))
+# path_test = MISTRAL_SFT_ROOT / 'dataset_ultrachat/train_dataset_tokenized_v2'
+# print(type(path_test))
+# print(path_test)
+
+from sft_grpo.sft.mistral import mistral_config as m_cfg
+print(m_cfg.DATASET_DIR / "train_dataset_tokenized_v2")
+#%%
+from sft_grpo.sft.mistral import mistral_config as m_cfg
+print(m_cfg.DATASET_DIR)
+
+
 # save the unformatted and untokenized datasets
-train_data.save_to_disk("./dataset_ultrachat/train_dataset_orig")
-test_data.save_to_disk("./dataset_ultrachat/test_datase_orig")
+train_data.save_to_disk(m_cfg.DATASET_DIR / "train_dataset_orig")
+test_data.save_to_disk(m_cfg.DATASET_DIR / "test_datase_orig")
 
 # save the formatted and tokenized datasets
-processed_train.save_to_disk("./dataset_ultrachat/train_dataset_tokenized_v2")
-processed_eval.save_to_disk("./dataset_ultrachat/test_dataset_tokenized_v2")
+processed_train.save_to_disk(m_cfg.DATASET_DIR / "train_dataset_tokenized_v2")
+processed_eval.save_to_disk(m_cfg.DATASET_DIR / "test_dataset_tokenized_v2")
 
 # save the custom tokenizer
-tokenizer.save_pretrained("./mistral_7B_customized tokenizer_v2")
+tokenizer.save_pretrained(m_cfg.MISTRAL_SFT_ROOT/ "mistral_7B_customized_tokenizer_v2")
 
 # %%
 print(tokenizer.all_special_tokens)

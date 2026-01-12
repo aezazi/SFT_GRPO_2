@@ -25,7 +25,6 @@ DATASET_DIR = MISTRAL_SFT_ROOT / "dataset_ultrachat"
 
 # Model configuration
 MODEL_NAME = "mistralai/Mistral-7B-v0.1"
-# HF_TOKEN = os.getenv("hf_token")
 HF_TOKEN = HF_TOKEN
 
 def ensure_directories():
