@@ -11,7 +11,7 @@ import multiprocessing
 from pathlib import Path
 
 from sft_grpo.config import PACKAGE_ROOT, HF_TOKEN
-from sft_grpo.sft.mistral.mistral_config import MISTRAL_SFT_ROOT
+from sft_grpo.sft.mistral.mistral_config import MISTRAL_SFT_ROOT, MODEL_NAME
 from sft_grpo.sft.mistral.mistral_sft_utils import format_tokenize_with_spans
 
 #%%
@@ -23,10 +23,9 @@ if torch.cuda.is_available():
 
 #%%
 # Load BASE model
-model_name = "mistralai/Mistral-7B-v0.1"
 
 model = AutoModelForCausalLM.from_pretrained(
-    model_name,
+    MODEL_NAME,
     dtype=torch.bfloat16,
     device_map="auto",
     token=HF_TOKEN
@@ -34,7 +33,7 @@ model = AutoModelForCausalLM.from_pretrained(
 
 #%%
 # load tokenizer
-tokenizer = AutoTokenizer.from_pretrained(model_name, token=HF_TOKEN)
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, token=HF_TOKEN)
 
 # Check if pad token exists
 if tokenizer.pad_token is None:
@@ -82,6 +81,9 @@ aae_chat_temp_3 = """{% if messages[0]['role'] != 'system' %}{% set default_msg 
 tokenizer.chat_template = aae_chat_temp_3
 print('set tokenizer chat template')
 
+#%%
+# THIS IS CRITICAL. ALWAYS RESIZE THE MODEL TO ACCOMMODATE THE EXTRA SPECIAL TOKENS
+model.resize_token_embeddings(len(tokenizer))
 
 #%%
 # tokenize train data
@@ -142,3 +144,19 @@ print(ex['labels'])
 print(tokenizer.decode(ex["input_ids"]))
 print(sum(l != -100 for l in ex["labels"]), "supervised tokens")
 # %%
+# %%
+# ============================ STATISTICS ==============================
+
+# Get some statistics about token lengths
+if 'input_ids' in train_data_tokenized.column_names:
+    token_lengths = [len(ids) for ids in train_data_tokenized["input_ids"]]
+    print(f"\nToken length statistics:")
+    print(f"  Min: {min(token_lengths)}")
+    print(f"  Max: {max(token_lengths)}")
+    print(f"  Mean: {sum(token_lengths) / len(token_lengths):.2f}")
+    print(f"  Median: {sorted(token_lengths)[len(token_lengths)//2]}")
+    
+    # Count examples that exceed common context lengths
+    for threshold in [512, 1024, 2048, 4096]:
+        count = sum(1 for length in token_lengths if length > threshold)
+        print(f"  Examples > {threshold} tokens: {count} ({count/len(token_lengths)*100:.1f}%)")

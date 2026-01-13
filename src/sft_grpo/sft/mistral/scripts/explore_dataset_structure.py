@@ -3,31 +3,29 @@ from datasets import load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer
 import torch
 import os
-from dotenv import load_dotenv
 import multiprocessing
 
 #%%
-# Load environment variables
-load_dotenv()
-hf_token = os.getenv("hf_token")
-print(hf_token)
+from sft_grpo.config import HF_TOKEN, PACKAGE_ROOT
+from sft_grpo.sft.mistral.mistral_config import MODEL_NAME
+
+print(HF_TOKEN)
 
 if torch.cuda.is_available():
     print('cuda available')
 
 #%%
 # Load BASE model
-model_name = "mistralai/Mistral-7B-v0.1"
 
 model = AutoModelForCausalLM.from_pretrained(
-    model_name,
+    MODEL_NAME,
     dtype=torch.bfloat16,
     device_map="auto",
-    token=hf_token
+    token=HF_TOKEN
 )
 
 #%%
-tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, token=HF_TOKEN)
 
 # Check if pad token exists
 if tokenizer.pad_token is None:
@@ -117,10 +115,10 @@ print(tokenizer.all_special_ids)
 
 #%%
 # A custom chat template that injects a bos token at the begining of each conversation, injects an eos token at the end of every turn, injects a system role and message role at begining of each conversation if none is present
-aae_chat_temp =  """{% if bos_token %}{{ bos_token }}{% endif %}{% if messages[0]['role'] != 'system' %}{% set default_msg = 'You are a helpful assistant.' %}{% if default_system_message %}{% set default_msg = default_system_message %}{% endif %}{% set messages = [{'role': 'system', 'content': default_msg}] + messages %}{% endif %}{% for message in messages %}{% if message['role'] == 'system' %}<|system|>{{ message['content'] }}</s>{% elif message['role'] == 'user' %}<|user|>{{ message['content'] }}</s>{% elif message['role'] == 'assistant' %}<|assistant|>{{ message['content'] }}</s>{% endif %}{% endfor %}{% if add_generation_prompt %}<|assistant|>{% endif %}"""
+aae_chat_temp_3 = """{% if messages[0]['role'] != 'system' %}{% set default_msg = 'You are a helpful assistant.' %}{% if default_system_message %}{% set default_msg = default_system_message %}{% endif %}{% set messages = [{'role': 'system', 'content': default_msg}] + messages %}{% endif %}{% for message in messages %}{% if message['role'] == 'system' %}<|system|>{{ message['content'] }}</s>{% elif message['role'] == 'user' %}<|user|>{{ message['content'] }}</s>{% elif message['role'] == 'assistant' %}<|assistant|>{{ message['content'] }}</s>{% endif %}{% endfor %}{% if add_generation_prompt %}<|assistant|>{% endif %}"""
 
 # set the tokenizer's chat template
-tokenizer.chat_template = aae_chat_temp
+tokenizer.chat_template = aae_chat_temp_3
 
 #%%
 #function to format dataset
@@ -184,9 +182,11 @@ def format_tokenize(example):
     }
 #%%
 # Test the format_tokenize function
-train_data_tokenized = train_data.select(range(1)).map(
+num_cores = multiprocessing.cpu_count()
+train_data_tokenized = train_data.map(
     format_tokenize,
     desc="Tokenizing conversations",
+    num_proc=num_cores-2,
     remove_columns=train_data.column_names  # Remove original columns so object has three columns: input_ids, attention_mask, and formatted_text 
 )
 
