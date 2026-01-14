@@ -3,10 +3,14 @@
 import sys
 from pathlib import Path
 from datasets import load_dataset, load_from_disk
-from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer
+from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer, TrainerCallback, TrainerControl, TrainerState
 from peft import LoraConfig, get_peft_model, TaskType
 import torch
 import os
+from datetime import datetime
+import csv
+import json
+
 
 
 # NEW: Import from your package
@@ -177,12 +181,6 @@ print("="*80 + "\n")
 
 #%%
 # UPDATED CALLBACK WITH FIXED STAT NAMES
-import csv
-from transformers import TrainerCallback, TrainerControl, TrainerState
-from datetime import datetime
-import json
-
-
 class SFTLoggingCallback(TrainerCallback):
     def __init__(self, log_file=None, collator=None):
         self.log_file = log_file
@@ -217,64 +215,211 @@ class SFTLoggingCallback(TrainerCallback):
     # on_log and on_train_end remain the same as your original script, 
     # as they already use 'a' (append) mode.
 
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        """Called when logging occurs (every logging_steps)"""
+        if logs is None:
+            return control
+        
+        # Get collator statistics
+        collator_stats = {}
+        if self.collator is not None:
+            stats = self.collator.get_stats()
+            collator_stats = {
+                'no_truncation': stats['no_truncation'],
+                'context_only_truncated': stats['context_only_truncated'],
+                'assistant_partial_loss': stats['assistant_partial_loss'],
+                'assistant_complete_loss': stats['assistant_complete_loss'],
+                'skipped_no_labels': stats['skipped_no_labels']
+            }
+        
+        # Prepare log entry
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        step = state.global_step
+        epoch = round(state.epoch, 4) if state.epoch is not None else 0
+        train_loss = logs.get('loss', None)
+        eval_loss = logs.get('eval_loss', None)
+        learning_rate = logs.get('learning_rate', None)
+        
+        # Calculate examples seen
+        effective_batch = args.per_device_train_batch_size * args.gradient_accumulation_steps * args.world_size
+        examples_seen = step * effective_batch
+        examples_per_sec = logs.get('train_samples_per_second', None)
+        
+        # Console output
+        print(f"\n{'='*80}")
+        print(f"Step: {step} | Epoch: {epoch:.4f}")
+        if train_loss is not None:
+            print(f"Train Loss: {train_loss:.4f}")
+        if eval_loss is not None:
+            print(f"Eval Loss: {eval_loss:.4f}")
+            if eval_loss < self.best_eval_loss:
+                self.best_eval_loss = eval_loss
+                print(f"🎯 New best eval loss!")
+        if learning_rate is not None:
+            print(f"Learning Rate: {learning_rate:.2e}")
+        
+        # Print collator stats every 50 steps
+        if (state.global_step % 50 == 0) and self.collator is not None:
+            self.collator.print_stats()
+        print(f"{'='*80}")
+        
+        # Write to CSV
+        with open(self.log_file, 'a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                timestamp,
+                step,
+                epoch,
+                train_loss if train_loss is not None else "",
+                eval_loss if eval_loss is not None else "",
+                learning_rate if learning_rate is not None else "",
+                examples_seen,
+                examples_per_sec if examples_per_sec is not None else "",
+                collator_stats.get('no_truncation', ''),
+                collator_stats.get('context_only_truncated', ''),
+                collator_stats.get('assistant_partial_loss', ''),
+                collator_stats.get('assistant_complete_loss', ''),
+                collator_stats.get('skipped_no_labels', '')
+            ])
+        
+        # Store for summary
+        self.training_history.append({
+            'step': step,
+            'epoch': epoch,
+            'train_loss': train_loss,
+            'eval_loss': eval_loss,
+            'learning_rate': learning_rate
+        })
+        
+        return control
+    
+    def on_train_end(self, args, state, control, **kwargs):
+        """Print summary statistics when training ends"""
+        end_time = datetime.now()
+        duration = end_time - self.start_time
+        
+        print("\n" + "=" * 80)
+        print("TRAINING COMPLETE")
+        print("=" * 80)
+        print(f"Start Time: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"End Time: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Total Duration: {duration}")
+        print(f"Total Steps: {state.global_step}")
+        print(f"Total Epochs: {state.epoch:.4f}")
+        print(f"Best Eval Loss: {self.best_eval_loss:.4f}")
+        
+        # Calculate training statistics
+        train_losses = [h['train_loss'] for h in self.training_history if h['train_loss'] is not None]
+        if train_losses:
+            print(f"\nTraining Loss Statistics:")
+            print(f"  Initial: {train_losses[0]:.4f}")
+            print(f"  Final: {train_losses[-1]:.4f}")
+            print(f"  Min: {min(train_losses):.4f}")
+            print(f"  Max: {max(train_losses):.4f}")
+            print(f"  Improvement: {train_losses[0] - train_losses[-1]:.4f}")
+        
+        eval_losses = [h['eval_loss'] for h in self.training_history if h['eval_loss'] is not None]
+        if eval_losses:
+            print(f"\nEval Loss Statistics:")
+            print(f"  Best: {min(eval_losses):.4f}")
+            print(f"  Final: {eval_losses[-1]:.4f}")
+        
+        # Get final collator statistics
+        if self.collator is not None:
+            print("\nFinal Collator Statistics:")
+            self.collator.print_stats()
+        
+        print("=" * 80)
+        print(f"Training log saved to: {self.log_file}")
+        print(f"Best model saved to: {args.output_dir}/best_model")
+        print("=" * 80 + "\n")
+        
+        # Save summary to JSON
+        summary = {
+            'start_time': self.start_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'end_time': end_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'duration_seconds': duration.total_seconds(),
+            'total_steps': state.global_step,
+            'total_epochs': state.epoch,
+            'best_eval_loss': self.best_eval_loss,
+            'final_train_loss': train_losses[-1] if train_losses else None,
+            'final_eval_loss': eval_losses[-1] if eval_losses else None,
+        }
+        
+        if self.collator is not None:
+            summary['collator_stats'] = self.collator.get_stats()
+        
+        with open(f"{args.output_dir}/training_summary.json", 'w') as f:
+            json.dump(summary, f, indent=2)
+        
+        return control
+
 
 #%%
 # Generation test callback
 class GenerationTestCallback(TrainerCallback):
     """
-    Callback to test model generation during training.
+    Callback to test model generation and LOG results to a file.
     """
-    def __init__(self, tokenizer, test_prompts, generation_steps=500):
+    def __init__(self, tokenizer, test_prompts, log_file, generation_steps=500):
         self.tokenizer = tokenizer
         self.test_prompts = test_prompts
         self.generation_steps = generation_steps
-    
+        self.log_file = log_file
+        
+        # Initialize the log file with a header if it doesn't exist
+        if not os.path.exists(self.log_file):
+            with open(self.log_file, "w") as f:
+                f.write(f"Generation Test Log - Started: {datetime.now()}\n")
+                f.write("="*80 + "\n")
+
     def on_evaluate(self, args, state, control, model, **kwargs):
-        """Generate sample outputs during evaluation"""
         if state.global_step % self.generation_steps == 0 and state.global_step > 0:
-            print(f"\n{'='*80}")
-            print(f"GENERATION TEST AT STEP {state.global_step}")
-            print(f"{'='*80}")
+            # Prepare the log entry string
+            output_header = f"\n\n{'='*80}\nGENERATION TEST AT STEP {state.global_step}\n{'='*80}\n"
+            print(output_header) # Still print to console so you see it live
             
             model.eval()
-            
-            for i, prompt in enumerate(self.test_prompts):
-                try:
-                    messages = [{"role": "user", "content": prompt}]
-                    input_text = self.tokenizer.apply_chat_template(
-                        messages, 
-                        tokenize=False, 
-                        add_generation_prompt=True
-                    )
-                    
-                    inputs = self.tokenizer(input_text, return_tensors="pt").to(model.device)
-                    
-                    with torch.no_grad():
-                        outputs = model.generate(
-                            **inputs,
-                            max_new_tokens=150,
-                            temperature=0.7,
-                            top_p=0.9,
-                            do_sample=True,
-                            pad_token_id=self.tokenizer.pad_token_id
-                        )
-                    
-                    generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-                    
-                    print(f"\n--- Test Prompt {i+1} ---")
-                    print(f"Prompt: {prompt}")
-                    print(f"Generated: {generated_text}")
-                    print("-" * 80)
+            with open(self.log_file, "a") as f:
+                f.write(output_header)
                 
-                except Exception as e:
-                    print(f"\n--- Test Prompt {i+1} FAILED ---")
-                    print(f"Prompt: {prompt}")
-                    print(f"Error: {e}")
-                    print("-" * 80)
+                for i, prompt in enumerate(self.test_prompts):
+                    try:
+                        messages = [{"role": "user", "content": prompt}]
+                        input_text = self.tokenizer.apply_chat_template(
+                            messages, tokenize=False, add_generation_prompt=True
+                        )
+                        inputs = self.tokenizer(input_text, return_tensors="pt").to(model.device)
+                        
+                        with torch.no_grad():
+                            outputs = model.generate(
+                                **inputs,
+                                max_new_tokens=150,
+                                temperature=0.7,
+                                top_p=0.9,
+                                do_sample=True,
+                                pad_token_id=self.tokenizer.pad_token_id
+                            )
+                        
+                        generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+                        
+                        # Format the result
+                        result_str = (
+                            f"\n--- Test Prompt {i+1} ---\n"
+                            f"Prompt: {prompt}\n"
+                            f"Generated: {generated_text}\n"
+                            f"{'-' * 80}\n"
+                        )
+                        
+                        print(result_str) # Live view
+                        f.write(result_str) # Permanent record
+                        
+                    except Exception as e:
+                        error_msg = f"\n--- Test Prompt {i+1} FAILED: {e} ---\n"
+                        print(error_msg)
+                        f.write(error_msg)
             
-            print(f"{'='*80}\n")
             model.train()
-        
         return control
 
 
@@ -282,7 +427,7 @@ class GenerationTestCallback(TrainerCallback):
 # Instantiate callbacks
 
 # Ensure the logs directory exists before starting
-(DATASET_DIR.parent / "logs").mkdir(parents=True, exist_ok=True)
+(MISTRAL_SFT_ROOT / "logs").mkdir(parents=True, exist_ok=True)
 
 logging_callback = SFTLoggingCallback(
     log_file=str(MISTRAL_SFT_ROOT / "logs" / "training_log.csv"),
@@ -298,6 +443,7 @@ test_prompts = [
 generation_callback = GenerationTestCallback(
     tokenizer=tokenizer, 
     test_prompts=test_prompts,
+    log_file=str(MISTRAL_SFT_ROOT / "logs" / "generations.log"), # NEW
     generation_steps=500
 )
 
