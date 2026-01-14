@@ -178,8 +178,16 @@ class TruncatingCollator:
         }
 
     def get_stats(self):
+        """Return statistics as a dictionary using .value for shared memory"""
         total = self._total_examples.value
-        if total == 0: return {'total_examples': 0} # return empty dict or zeros
+        if total == 0:
+            return {
+                'total_examples': 0, 'no_truncation': 0, 'context_only_truncated': 0,
+                'assistant_partial_loss': 0, 'assistant_complete_loss': 0, 'skipped_no_labels': 0,
+                'no_truncation_pct': 0.0, 'context_only_truncated_pct': 0.0,
+                'assistant_partial_loss_pct': 0.0, 'assistant_complete_loss_pct': 0.0,
+                'skipped_no_labels_pct': 0.0,
+            }
         
         return {
             'total_examples': total,
@@ -194,3 +202,27 @@ class TruncatingCollator:
             'assistant_complete_loss_pct': 100 * self._assistant_complete_loss.value / total,
             'skipped_no_labels_pct': 100 * self._skipped_no_labels.value / total,
         }
+
+    def reset_stats(self):
+        """Reset all shared memory counters"""
+        with self._total_examples.get_lock(): self._total_examples.value = 0
+        with self._no_truncation.get_lock(): self._no_truncation.value = 0
+        with self._context_only_truncated.get_lock(): self._context_only_truncated.value = 0
+        with self._assistant_partial_loss.get_lock(): self._assistant_partial_loss.value = 0
+        with self._assistant_complete_loss.get_lock(): self._assistant_complete_loss.value = 0
+        with self._skipped_no_labels.get_lock(): self._skipped_no_labels.value = 0
+
+    def print_stats(self):
+        """Print formatted statistics"""
+        stats = self.get_stats()
+        print("\n" + "="*60)
+        print("COLLATOR STATISTICS (SHARED MEMORY)")
+        print("="*60)
+        print(f"Total examples processed: {stats['total_examples']:,}")
+        print(f"\nCategory breakdown (mutually exclusive):")
+        print(f"  ✓ No truncation needed:    {stats['no_truncation']:6,} ({stats['no_truncation_pct']:5.1f}%)")
+        print(f"  ✂ Context only truncated:   {stats['context_only_truncated']:6,} ({stats['context_only_truncated_pct']:5.1f}%)")
+        print(f"  ⚠ Assistant partial loss:  {stats['assistant_partial_loss']:6,} ({stats['assistant_partial_loss_pct']:5.1f}%)")
+        print(f"  ✗ Assistant complete loss: {stats['assistant_complete_loss']:6,} ({stats['assistant_complete_loss_pct']:5.1f}%)")
+        print(f"  ∅ No labels (skipped):     {stats['skipped_no_labels']:6,} ({stats['skipped_no_labels_pct']:5.1f}%)")
+        print("="*60)
