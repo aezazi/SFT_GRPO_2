@@ -115,6 +115,7 @@ processed_eval = dataset_ultrachat["test_sft"].map(
 
 from sft_grpo.sft.mistral import mistral_config as m_cfg
 print(m_cfg.DATASET_DIR / "train_dataset_tokenized_v2")
+
 #%%
 from sft_grpo.sft.mistral import mistral_config as m_cfg
 print(m_cfg.DATASET_DIR)
@@ -148,8 +149,8 @@ print(sum(l != -100 for l in ex["labels"]), "supervised tokens")
 # ============================ STATISTICS ==============================
 
 # Get some statistics about token lengths
-if 'input_ids' in train_data_tokenized.column_names:
-    token_lengths = [len(ids) for ids in train_data_tokenized["input_ids"]]
+if 'input_ids' in processed_train.column_names:
+    token_lengths = [len(ids) for ids in processed_train["input_ids"]]
     print(f"\nToken length statistics:")
     print(f"  Min: {min(token_lengths)}")
     print(f"  Max: {max(token_lengths)}")
@@ -160,3 +161,5 @@ if 'input_ids' in train_data_tokenized.column_names:
     for threshold in [512, 1024, 2048, 4096]:
         count = sum(1 for length in token_lengths if length > threshold)
         print(f"  Examples > {threshold} tokens: {count} ({count/len(token_lengths)*100:.1f}%)")
+
+# %%

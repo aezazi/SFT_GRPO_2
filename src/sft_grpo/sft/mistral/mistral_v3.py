@@ -11,7 +11,7 @@ import os
 
 # NEW: Import from your package
 from sft_grpo.config import HF_TOKEN
-from sft_grpo.sft.mistral.mistral_config import CUSTOM_TOKENIZER_V2_PATH, DATASET_DIR, MODEL_NAME
+from sft_grpo.sft.mistral.mistral_config import CUSTOM_TOKENIZER_V2_PATH, DATASET_DIR, MODEL_NAME, MISTRAL_SFT_ROOT
 from sft_grpo.sft.mistral.mistral_sft_utils import TruncatingCollator
 
 #%%
@@ -30,12 +30,13 @@ model_params = {
 if torch.cuda.is_available():
     model_params["attn_implementation"] = "flash_attention_2"
     print('cuda available')
-    print(MODEL_NAME.config._attn_implementation)
+    # print(MODEL_NAME.config._attn_implementation)
 else:
     print('cuda not available')
 
 # Load the model using dictionary unpacking (**)
 model = AutoModelForCausalLM.from_pretrained(**model_params)
+print(model.config._attn_implementation)
 
 
 #%%
@@ -111,13 +112,13 @@ training_args = TrainingArguments(
     
     # Logging and evaluation
     logging_steps=10,
-    eval_steps=50,
-    save_steps=500,
+    eval_steps=1000,
+    save_steps=1000,
     eval_strategy="steps",
     save_strategy="steps",
     
     # Model saving
-    save_total_limit=3,
+    save_total_limit=2,
     load_best_model_at_end=True,
     metric_for_best_model="eval_loss",
     greater_is_better=False,
@@ -531,7 +532,7 @@ trainer = Trainer(
 print("\n" + "="*80)
 print("TRAINING SETUP SUMMARY")
 print("="*80)
-print(f"Model: {model_name}")
+print(f"Model: {MODEL_NAME}")
 print(f"Training samples: {len(train_data):,}")
 print(f"Eval samples: {len(eval_data):,}")
 print(f"Effective batch size: {training_args.per_device_train_batch_size * training_args.gradient_accumulation_steps * training_args.world_size}")
