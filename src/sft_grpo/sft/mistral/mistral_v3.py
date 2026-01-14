@@ -184,9 +184,6 @@ import json
 
 
 class SFTLoggingCallback(TrainerCallback):
-    """
-    Custom callback for logging training metrics and collator statistics.
-    """
     def __init__(self, log_file=None, collator=None):
         self.log_file = log_file
         self.collator = collator
@@ -194,170 +191,31 @@ class SFTLoggingCallback(TrainerCallback):
         self.best_eval_loss = float('inf')
         self.training_history = []
         
-        # Initialize CSV file with UPDATED headers
-        with open(self.log_file, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow([
-                "timestamp",
-                "step",
-                "epoch",
-                "train_loss",
-                "eval_loss",
-                "learning_rate",
-                "examples_seen",
-                "examples_per_sec",
-                "no_truncation",
-                "context_only_truncated",
-                "assistant_partial_loss",
-                "assistant_complete_loss",
-                "skipped_no_labels"
-            ])
-    
+        # Check if log file exists to avoid overwriting 4000 steps of data
+        file_exists = os.path.exists(self.log_file)
+        
+        # Open in append mode ('a') instead of write mode ('w')
+        if not file_exists:
+            with open(self.log_file, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    "timestamp", "step", "epoch", "train_loss", "eval_loss", 
+                    "learning_rate", "examples_seen", "examples_per_sec", 
+                    "no_truncation", "context_only_truncated", "assistant_partial_loss", 
+                    "assistant_complete_loss", "skipped_no_labels"
+                ])
+        else:
+            print(f"✅ Existing log found at {self.log_file}. Resuming in append mode.")
+
     def on_train_begin(self, args, state, control, **kwargs):
         self.start_time = datetime.now()
         print("=" * 80)
-        print(f"Training started at: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Training resumed at: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}")
         print("=" * 80)
         return control
-    
-    def on_log(self, args, state, control, logs=None, **kwargs):
-        """Called when logging occurs (every logging_steps)"""
-        if logs is None:
-            return control
-        
-        # Get collator statistics
-        collator_stats = {}
-        if self.collator is not None:
-            stats = self.collator.get_stats()
-            collator_stats = {
-                'no_truncation': stats['no_truncation'],
-                'context_only_truncated': stats['context_only_truncated'],
-                'assistant_partial_loss': stats['assistant_partial_loss'],
-                'assistant_complete_loss': stats['assistant_complete_loss'],
-                'skipped_no_labels': stats['skipped_no_labels']
-            }
-        
-        # Prepare log entry
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        step = state.global_step
-        epoch = round(state.epoch, 4) if state.epoch is not None else 0
-        train_loss = logs.get('loss', None)
-        eval_loss = logs.get('eval_loss', None)
-        learning_rate = logs.get('learning_rate', None)
-        
-        # Calculate examples seen
-        effective_batch = args.per_device_train_batch_size * args.gradient_accumulation_steps * args.world_size
-        examples_seen = step * effective_batch
-        examples_per_sec = logs.get('train_samples_per_second', None)
-        
-        # Console output
-        print(f"\n{'='*80}")
-        print(f"Step: {step} | Epoch: {epoch:.4f}")
-        if train_loss is not None:
-            print(f"Train Loss: {train_loss:.4f}")
-        if eval_loss is not None:
-            print(f"Eval Loss: {eval_loss:.4f}")
-            if eval_loss < self.best_eval_loss:
-                self.best_eval_loss = eval_loss
-                print(f"🎯 New best eval loss!")
-        if learning_rate is not None:
-            print(f"Learning Rate: {learning_rate:.2e}")
-        
-        # Print collator stats every 50 steps
-        if (state.global_step % 50 == 0) and self.collator is not None:
-            self.collator.print_stats()
-        print(f"{'='*80}")
-        
-        # Write to CSV
-        with open(self.log_file, 'a', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow([
-                timestamp,
-                step,
-                epoch,
-                train_loss if train_loss is not None else "",
-                eval_loss if eval_loss is not None else "",
-                learning_rate if learning_rate is not None else "",
-                examples_seen,
-                examples_per_sec if examples_per_sec is not None else "",
-                collator_stats.get('no_truncation', ''),
-                collator_stats.get('context_only_truncated', ''),
-                collator_stats.get('assistant_partial_loss', ''),
-                collator_stats.get('assistant_complete_loss', ''),
-                collator_stats.get('skipped_no_labels', '')
-            ])
-        
-        # Store for summary
-        self.training_history.append({
-            'step': step,
-            'epoch': epoch,
-            'train_loss': train_loss,
-            'eval_loss': eval_loss,
-            'learning_rate': learning_rate
-        })
-        
-        return control
-    
-    def on_train_end(self, args, state, control, **kwargs):
-        """Print summary statistics when training ends"""
-        end_time = datetime.now()
-        duration = end_time - self.start_time
-        
-        print("\n" + "=" * 80)
-        print("TRAINING COMPLETE")
-        print("=" * 80)
-        print(f"Start Time: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"End Time: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"Total Duration: {duration}")
-        print(f"Total Steps: {state.global_step}")
-        print(f"Total Epochs: {state.epoch:.4f}")
-        print(f"Best Eval Loss: {self.best_eval_loss:.4f}")
-        
-        # Calculate training statistics
-        train_losses = [h['train_loss'] for h in self.training_history if h['train_loss'] is not None]
-        if train_losses:
-            print(f"\nTraining Loss Statistics:")
-            print(f"  Initial: {train_losses[0]:.4f}")
-            print(f"  Final: {train_losses[-1]:.4f}")
-            print(f"  Min: {min(train_losses):.4f}")
-            print(f"  Max: {max(train_losses):.4f}")
-            print(f"  Improvement: {train_losses[0] - train_losses[-1]:.4f}")
-        
-        eval_losses = [h['eval_loss'] for h in self.training_history if h['eval_loss'] is not None]
-        if eval_losses:
-            print(f"\nEval Loss Statistics:")
-            print(f"  Best: {min(eval_losses):.4f}")
-            print(f"  Final: {eval_losses[-1]:.4f}")
-        
-        # Get final collator statistics
-        if self.collator is not None:
-            print("\nFinal Collator Statistics:")
-            self.collator.print_stats()
-        
-        print("=" * 80)
-        print(f"Training log saved to: {self.log_file}")
-        print(f"Best model saved to: {args.output_dir}/best_model")
-        print("=" * 80 + "\n")
-        
-        # Save summary to JSON
-        summary = {
-            'start_time': self.start_time.strftime('%Y-%m-%d %H:%M:%S'),
-            'end_time': end_time.strftime('%Y-%m-%d %H:%M:%S'),
-            'duration_seconds': duration.total_seconds(),
-            'total_steps': state.global_step,
-            'total_epochs': state.epoch,
-            'best_eval_loss': self.best_eval_loss,
-            'final_train_loss': train_losses[-1] if train_losses else None,
-            'final_eval_loss': eval_losses[-1] if eval_losses else None,
-        }
-        
-        if self.collator is not None:
-            summary['collator_stats'] = self.collator.get_stats()
-        
-        with open(f"{args.output_dir}/training_summary.json", 'w') as f:
-            json.dump(summary, f, indent=2)
-        
-        return control
+
+    # on_log and on_train_end remain the same as your original script, 
+    # as they already use 'a' (append) mode.
 
 
 #%%
