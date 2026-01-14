@@ -552,11 +552,19 @@ print("="*80 + "\n")
 
 #%%
 # Start training
-def start_training():
-    print("🚀 Starting training...")
-    print("="*80 + "\n")
-    
-    trainer.train()
+def start_training(checkpoint: str=None):
+
+    if checkpoint is not None:
+        print(f"🚀 Resuming training from {checkpoint}")
+        print("="*80 + "\n")
+        # Define the path to your specific checkpoint folder
+        checkpoint_path = str(MISTRAL_SFT_ROOT / "checkpoints" / checkpoint)
+        # Pass the path to the resume_from_checkpoint argument
+        trainer.train(resume_from_checkpoint=checkpoint_path)
+    else:
+        print("🚀 Starting training...")
+        print("="*80 + "\n")
+        trainer.train()
 
     # Define final model path relative to Mistral root
     final_model_path = MISTRAL_SFT_ROOT / "experiments" / "final_sft_model_v1"
