@@ -23,6 +23,9 @@ class MistralChat:
             torch_dtype=torch.bfloat16,
             device_map="auto",
         )
+
+        # Resize for special tokens
+        base_model.resize_token_embeddings(len(self.tokenizer))
         
         # Load LoRA Adapters
         adapter_path = MISTRAL_SFT_ROOT / "experiments" / "final_sft_model_v1"
