@@ -49,7 +49,6 @@ debug.log
 
 # tokenized and sharded files
 dataset_ultrachat/
-checkpoints/
 
 # Model artifacts / checkpoints
 experiments/
