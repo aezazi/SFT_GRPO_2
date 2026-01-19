@@ -1,5 +1,4 @@
 
-
 #%%
 #imports
 from datasets import load_dataset
@@ -20,6 +19,11 @@ print(HF_TOKEN)
 
 if torch.cuda.is_available():
     print('cuda available')
+    device = "auto"
+else:
+    print('cuda not available')
+    device = "mps"
+
 
 #%%
 # Load BASE model
@@ -27,7 +31,7 @@ if torch.cuda.is_available():
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_NAME,
     dtype=torch.bfloat16,
-    device_map="auto",
+    device_map=device,
     token=HF_TOKEN
 )
 

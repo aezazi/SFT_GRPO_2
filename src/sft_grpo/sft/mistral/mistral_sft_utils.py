@@ -109,39 +109,50 @@ class TruncatingCollator:
             if not isinstance(labels, list): labels = labels.tolist()
             
             seq_len = len(input_ids)
-
+            
+            # if the sequence length is less than max_length, apppend all sequence tokens and labels to the batch. append 1s to the attention mask equal to the length of the sequence. increment the counter for no truncation. continue to the next example
             if seq_len <= self.max_length:
                 l_no_trunc += 1
                 batch_input_ids.append(input_ids)
                 batch_labels.append(labels)
                 batch_attention_mask.append([1] * len(input_ids))
                 continue
-
+            
+            # we enter the blocks below if sequence length is > max_length, so we need to truncate. 
+            # first identify the index positions for assistant responses. we do this using the labels we creates with the format_tokenize_with_span() function above
             assistant_positions = [i for i, label in enumerate(labels) if label != -100]
 
+            # if therre are no0 assistant responses in the sequence.increment the counter for skipped examples. skip the example and continue the next
             if not assistant_positions:
                 l_skipped += 1
                 continue
-
+            
+            # if assistant respnses are present in the sequence, get the starting and last token positions of the assistant response. compute the length of the span that includes all assistant response tokens in the sequence. note that In a multi-turn conversation, this value does include the length of any user inputs or system messages that occur between the very first assistant response and the very last one.
             first_asst = assistant_positions[0]
             last_asst = assistant_positions[-1]
             original_asst_len = last_asst - first_asst + 1
 
+            # compute the starting and ending position of the eligible window for the entire sequence starting from the back, so the window end is the last position. window start is either at position 0 (if seq_len is <= max_length) or seq_len - self.max_length ( if seq_len > max_length)
             window_end = seq_len
             window_start = max(0, seq_len - self.max_length)
             
+            # compute the positions of the assistant tokens in the window_start to window_end span.
             kept_asst_positions = [i for i in assistant_positions if window_start <= i < window_end]
             kept_asst_len = len(kept_asst_positions)
             
+            # if there are no assistant tokens in the span, increment the counter for assistant response completely truncated and continue
+            # presumably this might happen in the case where the last turn in the conversation was a very long input by user or system to which there was no assistant response. 
             if kept_asst_len == 0:
                 l_asst_complete += 1
                 continue 
             
+            # check how much of the assistant response inif some of the assistant response is kept, check if it falls within the minimum 50 tokens requirement. If kept assistant response is less than 50 tokens, skip the example and increment the counter for assistant response completely truncated. 
             if kept_asst_len < original_asst_len:
                 if kept_asst_len < self.min_assistant_tokens:
                     l_asst_complete += 1
                     continue
                 
+                # If the assistant response is kept and its length is greater than 50 but less than max_length, append the tokens to the batch input ids and increment the counter for assistant response partially truncated
                 l_asst_partial += 1
                 batch_input_ids.append(input_ids[window_start:window_end])
                 batch_labels.append(labels[window_start:window_end])
