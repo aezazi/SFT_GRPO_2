@@ -94,14 +94,49 @@ kept_asst_count = len(kept_asst_positions)
 
 # create an attention mask that is 1s for the entire sequence length. This is because in the forward pass the model must see all system, user, and assistant messages. the labels (targets) will be all -100 except the assistant messages. this gets the model to train onl 
 attention_mask = []
-attention_mask.append([1] * (window_end - window_start))
+attention_mask.extend([1] * (window_end - window_start))
 print(f'attentin_mask:\n{attention_mask}')
 
 #%%
-# how the model will use input_ids and labels
-# inside the Mistral model, the tensors are sliced before the loss is calculated. If your batch has a sequence length of 3072:The model takes the first 3071 outputs (logits).The model takes the last 3071 labels.The 3072nd prediction is simply thrown away because there is no ground truth for it.
-input_ids_slice = input_ids[:-1]
+# padding
+max_len = 30
+pad_token_id = tokenizer.pad_token_id
+label_pad_token_id = -100
 
+
+
+padded_input_ids = input_ids + ([pad_token_id] * (max_len- len(input_ids)))
+padded_labels = labels + ([label_pad_token_id] * (max_len- len(input_ids)))
+padded_attention_mask = attention_mask + ([0] * (max_len - len(input_ids)))
+
+print(f'\nformatted sequence:')
+print(text)
+
+print(f'\nmax_length: {max_len}')
+print(f'tokenized sequence length: {len(input_ids)}')
+print(f'eos token id: {2}')
+print(f'pad_token_id: {pad_token_id}')
+print(f'label_pad_token_id: {label_pad_token_id}')
+
+print(f'\ninpt_ids, padded_ids:')
+print(input_ids)
+print(padded_input_ids)
+
+print(f'\nlabels, padded_labels:')
+print(labels)
+print(padded_labels)
+
+print(f'\nattention_mask, padded_attention_mask:')
+print(attention_mask)
+print(padded_attention_mask)
+
+
+
+#%%
+# how the model will use input_ids and labels
+# inside the Mistral model, the tensors are sliced before the loss is calculated. If your batch has a sequence length of 3072:The model takes the first 3071 outputs (logits).The model takes the last 3071 labels.The 3072nd prediction is simply thrown away because there is no ground truth for it. Note that the attention mask does not need to be sliced. the attention mask is used only in the forward pass to excluse padding tokens from being included in the attetion computations
+
+input_ids_slice = input_ids[:-1]
 labels_slice = labels[1:]
 
 print(input_ids)
@@ -111,3 +146,6 @@ print(labels)
 print(f'\nmatching input_ids to targets')
 for i, id in enumerate(input_ids_slice):
     print(f'{id} --> {labels_slice[i]}')
+
+
+# %%
