@@ -88,33 +88,23 @@ eval_data = load_from_disk(DATASET_DIR / 'test_dataset_tokenized_v2')
 #     ],
 # )
 
-# # targeted based on svd of the matrices
+
+# ==============================================================================
+# 3. SURGICAL LORA CONFIG
+# ==============================================================================
+
 lora_config = LoraConfig(
-    r=64, 
-    lora_alpha=128,
+    r=64, lora_alpha=128,
     target_modules=["q_proj", "k_proj", "v_proj", "gate_proj", "up_proj", "down_proj"],
     rank_pattern={
-        # Tier 1 & 2: MLP (The most complex per your SVD)
-        "gate_proj": 256,
-        "down_proj": 256,
-        "up_proj": 128,
-        
-        # Tier 3: Attention Logic
-        "q_proj": 128,
-        
-        # Tier 4: Simplified Attention (Lowered from base)
-        "k_proj": 32,
-        "v_proj": 64,
+        "gate_proj": 256, "down_proj": 256, "up_proj": 128,
+        "q_proj": 128, "k_proj": 32, "v_proj": 64,
     },
     alpha_pattern={
-        "gate_proj": 512,
-        "down_proj": 512,
-        "up_proj": 256,
-        "q_proj": 256,
-        "k_proj": 64,
-        "v_proj": 128,
+        "gate_proj": 512, "down_proj": 512, "up_proj": 256,
+        "q_proj": 256, "k_proj": 64, "v_proj": 128,
     },
-    use_rslora=True, # Stabilizes learning across these varying ranks
+    use_rslora=True,
     lora_dropout=0.05,
     task_type="CAUSAL_LM"
 )
@@ -137,9 +127,11 @@ training_args = TrainingArguments(
     per_device_eval_batch_size=4,
 
     # Learning rate
-    learning_rate=2e-4,
+    # learning_rate=2e-4,
+    learning_rate=5e-5, # lr for surgical lora configs
     lr_scheduler_type="cosine",
-    warmup_ratio=0.03,
+    # warmup_ratio=0.03, 
+    warmup_ratio=0.1, # for surgical lora configs
 
     # Training duration
     num_train_epochs=1,
@@ -215,6 +207,7 @@ class SFTLoggingCallback(TrainerCallback):
     def __init__(self, log_file=None, collator=None):
         self.log_file = log_file
         self.collator = collator
+        self.overwrite_csv_log = True # Set/modify via start_training()
         self.start_time = None
         self.best_eval_loss = float('inf')
         self.training_history = []
@@ -237,8 +230,28 @@ class SFTLoggingCallback(TrainerCallback):
 
     def on_train_begin(self, args, state, control, **kwargs):
         self.start_time = datetime.now()
+
+        # Decide whether to wipe or append
+        # We only wipe if overwrite is True AND we are at the very beginning (step 0)
+        should_wipe = self.overwrite_csv_log and state.global_step == 0
+        
+        if should_wipe or not os.path.exists(self.log_file):
+            with open(self.log_file, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    "timestamp", "step", "epoch", "train_loss", "eval_loss", 
+                    "learning_rate", "examples_seen", "examples_per_sec", 
+                    "no_truncation", "context_only_truncated", "assistant_partial_loss", 
+                    "assistant_complete_loss", "skipped_no_labels"
+                ])
+            mode_msg = "CLEARED and started fresh" if should_wipe else "CREATED new"
+            print(f"📝 Log file {mode_msg} at: {self.log_file}")
+        else:
+            print(f"📈 Log file exists. Appending to: {self.log_file}")
+
+
         print("=" * 80)
-        print(f"Training resumed at: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Training started/resumed at: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}")
         print("=" * 80)
         return control
 
@@ -396,12 +409,25 @@ class GenerationTestCallback(TrainerCallback):
         self.test_prompts = test_prompts
         self.generation_steps = generation_steps
         self.log_file = log_file
+        self.overwrite_csv_log = False # Set/modify via start_training()
         
-        # Initialize the log file with a header if it doesn't exist
-        if not os.path.exists(self.log_file):
+    def on_train_begin(self, args, state, control, **kwargs):
+        # Ensure the logs directory exists
+        os.makedirs(os.path.dirname(self.log_file), exist_ok=True)
+        
+        # Determine if we should start a fresh log
+        should_wipe = self.overwrite_csv_log and state.global_step == 0
+        
+        if should_wipe or not os.path.exists(self.log_file):
             with open(self.log_file, "w") as f:
                 f.write(f"Generation Test Log - Started: {datetime.now()}\n")
                 f.write("="*80 + "\n")
+            mode_msg = "CLEARED and started fresh" if should_wipe else "CREATED new"
+            print(f"📝 Gen-log {mode_msg} at: {self.log_file}")
+        else:
+            print(f"📈 Gen-log exists. Appending to: {self.log_file}")
+            
+        return control
 
     def on_evaluate(self, args, state, control, model, **kwargs):
         if state.global_step % self.generation_steps == 0 and state.global_step > 0:
@@ -582,7 +608,12 @@ print("="*80 + "\n")
 
 #%%
 # Start training
-def start_training(checkpoint: str=None):
+def start_training(checkpoint: str=None, overwrite_logs: bool=True):
+
+    # 1. Update both callbacks with the overwrite preference
+    for callback in trainer.callback_handler.callbacks:
+        if isinstance(callback, (SFTLoggingCallback, GenerationTestCallback)):
+            callback.overwrite = overwrite_logs
 
     if checkpoint is not None:
         print(f"🚀 Resuming training from {checkpoint}")
