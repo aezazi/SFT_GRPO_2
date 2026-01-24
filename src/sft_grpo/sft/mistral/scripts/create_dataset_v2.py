@@ -148,7 +148,7 @@ print(ex['labels'])
 #%%
 print(tokenizer.decode(ex["input_ids"]))
 print(sum(l != -100 for l in ex["labels"]), "supervised tokens")
-# %%
+
 # %%
 # ============================ STATISTICS ==============================
 
@@ -165,5 +165,8 @@ if 'input_ids' in processed_train.column_names:
     for threshold in [512, 1024, 2048, 4096]:
         count = sum(1 for length in token_lengths if length > threshold)
         print(f"  Examples > {threshold} tokens: {count} ({count/len(token_lengths)*100:.1f}%)")
+
+# %%
+len(processed_train['input_ids'])
 
 # %%

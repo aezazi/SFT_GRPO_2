@@ -69,22 +69,54 @@ eval_data = load_from_disk(DATASET_DIR / 'test_dataset_tokenized_v2')
 
 
 # %%
-# configure PEFT LoRA
+# configure PEFT LoRA 
+# Basic
+# lora_config = LoraConfig(
+#     r=32,
+#     lora_alpha=64,
+#     lora_dropout=0.05,
+#     bias="none",
+#     task_type=TaskType.CAUSAL_LM,
+#     target_modules=[
+#         "q_proj",
+#         "k_proj",
+#         "v_proj",
+#         "o_proj",
+#         "gate_proj",
+#         "up_proj",
+#         "down_proj",
+#     ],
+# )
+
+# targeted based on svd of the matrices
 lora_config = LoraConfig(
-    r=16,
-    lora_alpha=32,
+    r=64, 
+    lora_alpha=128,
+    target_modules=["q_proj", "k_proj", "v_proj", "gate_proj", "up_proj", "down_proj"],
+    rank_pattern={
+        # Tier 1 & 2: MLP (The most complex per your SVD)
+        "gate_proj": 256,
+        "down_proj": 256,
+        "up_proj": 128,
+        
+        # Tier 3: Attention Logic
+        "q_proj": 128,
+        
+        # Tier 4: Simplified Attention (Lowered from base)
+        "k_proj": 32,
+        "v_proj": 64,
+    },
+    alpha_pattern={
+        "gate_proj": 512,
+        "down_proj": 512,
+        "up_proj": 256,
+        "q_proj": 256,
+        "k_proj": 64,
+        "v_proj": 128,
+    },
+    use_rslora=True, # Stabilizes learning across these varying ranks
     lora_dropout=0.05,
-    bias="none",
-    task_type=TaskType.CAUSAL_LM,
-    target_modules=[
-        "q_proj",
-        "k_proj",
-        "v_proj",
-        "o_proj",
-        "gate_proj",
-        "up_proj",
-        "down_proj",
-    ],
+    task_type="CAUSAL_LM"
 )
 
 model = get_peft_model(model, lora_config)
