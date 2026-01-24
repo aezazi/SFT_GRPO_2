@@ -608,6 +608,6 @@ def start_training(checkpoint: str=None):
     print(f"Best model saved to: {training_args.output_dir}")
 
 #%%
-start_training("checkpoint-5000")
+start_training()
 
 # comment to test goog push to github
