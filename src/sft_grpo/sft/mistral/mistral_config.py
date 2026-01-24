@@ -15,7 +15,6 @@ LOGS_DIR = MISTRAL_SFT_ROOT / "logs"
 EXPERIMENTS_DIR = MISTRAL_SFT_ROOT / "experiments"
 
 
-
 # Tokenizer paths
 CUSTOM_TOKENIZER_V1_PATH = MISTRAL_SFT_ROOT / "mistral_7B_customized_tokenizer"
 CUSTOM_TOKENIZER_V2_PATH = MISTRAL_SFT_ROOT / "mistral_7B_customized_tokenizer_v2"

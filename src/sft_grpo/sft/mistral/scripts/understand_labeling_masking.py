@@ -122,7 +122,10 @@ print(f'\ninpt_ids, padded_ids:')
 print(input_ids)
 print(padded_input_ids)
 
+
+# note that for the padded labels the eos token at actual sequence end is '2' as it is not padding and a legitimate and very important target. all the 2s following are padding a get the -100 label
 print(f'\nlabels, padded_labels:')
+print("note that for the padded labels the eos token at actual sequence end is '2' as it is not padding and a legitimate and very important target. all the 2s following are padding a get the -100 label")
 print(labels)
 print(padded_labels)
 
