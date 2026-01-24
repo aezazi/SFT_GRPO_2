@@ -68,7 +68,7 @@ train_data = load_from_disk(DATASET_DIR / 'train_dataset_tokenized_v2')
 eval_data = load_from_disk(DATASET_DIR / 'test_dataset_tokenized_v2')
 
 
-# %%
+#%%
 # configure PEFT LoRA 
 # Basic
 # lora_config = LoraConfig(
@@ -88,7 +88,7 @@ eval_data = load_from_disk(DATASET_DIR / 'test_dataset_tokenized_v2')
 #     ],
 # )
 
-# targeted based on svd of the matrices
+# # targeted based on svd of the matrices
 lora_config = LoraConfig(
     r=64, 
     lora_alpha=128,
