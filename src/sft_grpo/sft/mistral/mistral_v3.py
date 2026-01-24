@@ -122,9 +122,9 @@ training_args = TrainingArguments(
     remove_unused_columns=False,
     
     # Batch sizes
-    per_device_train_batch_size=2,
+    per_device_train_batch_size=8,
     gradient_accumulation_steps=16,
-    per_device_eval_batch_size=4,
+    per_device_eval_batch_size=8,
 
     # Learning rate
     # learning_rate=2e-4,
@@ -137,9 +137,9 @@ training_args = TrainingArguments(
     num_train_epochs=1,
     
     # Logging and evaluation
-    logging_steps=10,
-    eval_steps=1000,
-    save_steps=1000,
+    logging_steps=5,
+    eval_steps=250,
+    save_steps=250,
     eval_strategy="steps",
     save_strategy="steps",
     
@@ -156,7 +156,7 @@ training_args = TrainingArguments(
 
     # Optimizer
     optim="adamw_torch_fused",
-    max_grad_norm=1.0,
+    max_grad_norm=.3,
 
     # Reporting
     report_to="none",
@@ -167,7 +167,8 @@ training_args = TrainingArguments(
     group_by_length=False,
     
     # Memory optimization
-    gradient_checkpointing=False,
+    gradient_checkpointing=True,         # 🔥 CRITICAL: Turn this ON
+    gradient_checkpointing_kwargs={"use_reentrant": False}, # Modern standard for HF
     ddp_find_unused_parameters=False,
 )
 
