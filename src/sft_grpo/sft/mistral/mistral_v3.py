@@ -208,7 +208,7 @@ class SFTLoggingCallback(TrainerCallback):
     def __init__(self, log_file=None, collator=None):
         self.log_file = log_file
         self.collator = collator
-        self.overwrite_csv_log = True # Set/modify via start_training()
+        self.overwrite_csv_log = False # Set/modify via start_training()
         self.start_time = None
         self.best_eval_loss = float('inf')
         self.training_history = []
@@ -614,7 +614,7 @@ def start_training(checkpoint: str=None, overwrite_logs: bool=True):
     # 1. Update both callbacks with the overwrite preference
     for callback in trainer.callback_handler.callbacks:
         if isinstance(callback, (SFTLoggingCallback, GenerationTestCallback)):
-            callback.overwrite = overwrite_logs
+            callback.overwrite_csv_log = overwrite_logs
 
     if checkpoint is not None:
         print(f"🚀 Resuming training from {checkpoint}")
