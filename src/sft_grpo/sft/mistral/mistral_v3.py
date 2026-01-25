@@ -156,7 +156,7 @@ training_args = TrainingArguments(
 
     # Optimizer
     optim="adamw_torch_fused",
-    max_grad_norm=.3,
+    max_grad_norm=1.0,
 
     # Reporting
     report_to="none",
@@ -208,21 +208,21 @@ class SFTLoggingCallback(TrainerCallback):
     def __init__(self, log_file=None, collator=None):
         self.log_file = log_file
         self.collator = collator
-        self.overwrite_csv_log = False # Set/modify via start_training()
+        self.overwrite_csv_log = False 
         self.start_time = None
         self.best_eval_loss = float('inf')
         self.training_history = []
         
-        # Check if log file exists to avoid overwriting 4000 steps of data
         file_exists = os.path.exists(self.log_file)
         
-        # Open in append mode ('a') instead of write mode ('w')
         if not file_exists:
             with open(self.log_file, 'w', newline='') as f:
                 writer = csv.writer(f)
                 writer.writerow([
                     "timestamp", "step", "epoch", "train_loss", "eval_loss", 
-                    "learning_rate", "examples_seen", "examples_per_sec", 
+                    "learning_rate", 
+                    "grad_norm", "grad_norm_clipped", # <--- NEW HEADERS
+                    "examples_seen", "examples_per_sec", 
                     "no_truncation", "context_only_truncated", "assistant_partial_loss", 
                     "assistant_complete_loss", "skipped_no_labels"
                 ])
@@ -232,8 +232,6 @@ class SFTLoggingCallback(TrainerCallback):
     def on_train_begin(self, args, state, control, **kwargs):
         self.start_time = datetime.now()
 
-        # Decide whether to wipe or append
-        # We only wipe if overwrite is True AND we are at the very beginning (step 0)
         should_wipe = self.overwrite_csv_log and state.global_step == 0
         
         if should_wipe or not os.path.exists(self.log_file):
@@ -241,7 +239,9 @@ class SFTLoggingCallback(TrainerCallback):
                 writer = csv.writer(f)
                 writer.writerow([
                     "timestamp", "step", "epoch", "train_loss", "eval_loss", 
-                    "learning_rate", "examples_seen", "examples_per_sec", 
+                    "learning_rate", 
+                    "grad_norm", "grad_norm_clipped", # <--- NEW HEADERS
+                    "examples_seen", "examples_per_sec", 
                     "no_truncation", "context_only_truncated", "assistant_partial_loss", 
                     "assistant_complete_loss", "skipped_no_labels"
                 ])
@@ -250,17 +250,12 @@ class SFTLoggingCallback(TrainerCallback):
         else:
             print(f"📈 Log file exists. Appending to: {self.log_file}")
 
-
         print("=" * 80)
         print(f"Training started/resumed at: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}")
         print("=" * 80)
         return control
 
-    # on_log and on_train_end remain the same as your original script, 
-    # as they already use 'a' (append) mode.
-
     def on_log(self, args, state, control, logs=None, **kwargs):
-        """Called when logging occurs (every logging_steps)"""
         if logs is None:
             return control
         
@@ -283,6 +278,15 @@ class SFTLoggingCallback(TrainerCallback):
         train_loss = logs.get('loss', None)
         eval_loss = logs.get('eval_loss', None)
         learning_rate = logs.get('learning_rate', None)
+
+        # --- NEW: GRADIENT NORM CALCULATIONS ---
+        # Trainer logs the RAW grad_norm (pre-clipping)
+        raw_grad_norm = logs.get('grad_norm', None)
+        clipped_grad_norm = None
+        if raw_grad_norm is not None:
+            # We calculate what the effective norm was after clipping
+            clipped_grad_norm = min(raw_grad_norm, args.max_grad_norm)
+        # ---------------------------------------
         
         # Calculate examples seen
         effective_batch = args.per_device_train_batch_size * args.gradient_accumulation_steps * args.world_size
@@ -294,6 +298,12 @@ class SFTLoggingCallback(TrainerCallback):
         print(f"Step: {step} | Epoch: {epoch:.4f}")
         if train_loss is not None:
             print(f"Train Loss: {train_loss:.4f}")
+        
+        # --- NEW: SHOW GRAD NORM IN CONSOLE ---
+        if raw_grad_norm is not None:
+            print(f"Grad Norm: {raw_grad_norm:.4f} (Clipped: {clipped_grad_norm:.4f})")
+        # --------------------------------------
+
         if eval_loss is not None:
             print(f"Eval Loss: {eval_loss:.4f}")
             if eval_loss < self.best_eval_loss:
@@ -302,7 +312,6 @@ class SFTLoggingCallback(TrainerCallback):
         if learning_rate is not None:
             print(f"Learning Rate: {learning_rate:.2e}")
         
-        # Print collator stats every 50 steps
         if (state.global_step % 50 == 0) and self.collator is not None:
             self.collator.print_stats()
         print(f"{'='*80}")
@@ -317,6 +326,10 @@ class SFTLoggingCallback(TrainerCallback):
                 train_loss if train_loss is not None else "",
                 eval_loss if eval_loss is not None else "",
                 learning_rate if learning_rate is not None else "",
+                # --- NEW VALUES WRITTEN TO CSV ---
+                f"{raw_grad_norm:.4f}" if raw_grad_norm is not None else "",
+                f"{clipped_grad_norm:.4f}" if clipped_grad_norm is not None else "",
+                # ---------------------------------
                 examples_seen,
                 examples_per_sec if examples_per_sec is not None else "",
                 collator_stats.get('no_truncation', ''),
@@ -598,7 +611,7 @@ print(f"Training samples: {len(train_data):,}")
 print(f"Eval samples: {len(eval_data):,}")
 print(f"Effective batch size: {training_args.per_device_train_batch_size * training_args.gradient_accumulation_steps * training_args.world_size}")
 print(f"Steps per epoch: {len(train_data) // (training_args.per_device_train_batch_size * training_args.gradient_accumulation_steps * training_args.world_size)}")
-print(f"Warmup steps: {int(0.03 * len(train_data) // (training_args.per_device_train_batch_size * training_args.gradient_accumulation_steps * training_args.world_size))}")
+print(f"Warmup steps: {int(training_args.warmup_ratio * len(train_data) // (training_args.per_device_train_batch_size * training_args.gradient_accumulation_steps * training_args.world_size))}")
 print(f"Logging every: {training_args.logging_steps} steps")
 print(f"Evaluating every: {training_args.eval_steps} steps")
 print(f"Saving checkpoints every: {training_args.save_steps} steps")
