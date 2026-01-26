@@ -1,0 +1,76 @@
+SFT EVALUATION REPORT - 2026-01-26 20:13:03.497169
+==================================================
+
+TEST CASE: Negative Constraint (Shrimp Test)
+------------------------------
+Turn 1 User: I want to cook a traditional seafood paella for 4 people. Can you give me a recipe? Please remember: I have a severe allergy to shrimp, so do not include shrimp or prawns in any part of the recipe.
+Turn 1 Assistant: Sure! Here's a recipe for a delicious seafood paella that is shrimp-free:
+
+Ingredients:
+- 1 lb. Mixed seafood (such as scallops, mussels, clams, and squid), cleaned and deveined
+- 1 lb. Chicken thighs, cut into bite-sized pieces
+- 1 onion, chopped
+- 3 garlic cloves, minced
+- 2 cups short-grain rice
+- 6 cups chicken broth
+- 1/2 cup dry white wine
+- 1 tsp. Saffron threads
+- 1 tsp. Paprika
+- Salt and pepper, to taste
+- Olive oil
+
+Instructions:
+
+1. Heat olive oil in a large paella pan over medium heat. Add onions and garlic and sauté until softened, about 5 minutes.
+
+2. Add chicken and cook until browned on all sides, about 8 minutes. Remove from pan and set aside.
+
+3. In the same pan, add mixed seafood and cook until browned on all sides, about 5 minutes. Remove from pan and set aside.
+
+4. Add rice to the pan and stir to coat with oil. Toast the rice for 2-3 minutes, stirring constantly.
+
+5. Pour in the white wine and stir until absorbed. Add chicken broth, saffron threads, paprika, salt, and pepper. Bring to a boil, then reduce heat to low and cover the pan. Simmer for 18-20 minutes, or until the liquid has been absorbed and the rice is tender.
+
+6. Stir in the cooked chicken and seafood and cook for an additional 5-7 minutes, or until heated through.
+
+7. Serve hot, garnished with fresh parsley if desired. Enjoy your delicious shrimp-free seafood paella!
+
+
+==================================================
+TEST CASE: Multi-Turn Reasoning
+------------------------------
+Turn 1 User: Explain the concept of 'Gradient Norm' in neural network training. Use a metaphor involving a mountain.
+Turn 1 Assistant: The Gradient Norm is a technique used in neural network training to prevent overfitting, which occurs when a model becomes too complex and starts to generalize too much. It works by adding a penalty term to the loss function that discourages large values of the gradient norm. 
+
+Imagine a mountain with steep slopes and cliffs. The goal of climbing this mountain is to reach the top while avoiding falling off the cliffs. However, if you climb too fast or take shortcuts, you may end up overshooting your target and falling down the other side. This is similar to how neural networks can become too complex and start to generalize too much, leading to poor performance on new data.
+
+The Gradient Norm is like a safety harness that prevents you from falling off the mountain. By adding a penalty term to the loss function, it encourages the model to find a balance between fitting the training data well and not overfitting to it. Just like how you need to be careful while climbing a mountain, you need to be careful while training a neural network to avoid overfitting.
+
+Turn 2 User: If my gradient norm suddenly spikes to 10.0 after being stable at 2.0, what does that tell me about my learning rate or my data batch?
+Turn 2 Assistant: If your gradient norm suddenly spikes to 10.0 after being stable at 2.0, it could indicate several things:
+
+1. Learning rate: If your learning rate is too high, it could cause the gradient norm to spike. You may want to try reducing your learning rate to see if that helps.
+
+2. Data batch: If your data batch size is too small, it could lead to overfitting and cause the gradient norm to spike. You may want to increase your data batch size to see if that helps.
+
+3. Model complexity: If your model is too complex, it could cause the gradient norm to spike. You may want to simplify your model or reduce its number of layers to see if that helps.
+
+4. Regularization techniques: If you have implemented regularization techniques such as L1 or L2 regularization, they could also contribute to the spiking of the gradient norm. You may want to experiment with different regularization techniques to see if that helps.
+
+In summary, a sudden spike in the gradient norm could indicate issues with your learning rate, data batch size, model complexity, or regularization techniques.
+
+
+==================================================
+TEST CASE: JSON Formatting
+------------------------------
+Turn 1 User: I need a summary of the benefits of Python for data science. Provide your answer as a JSON object with three keys: 'libraries', 'community', and 'ease_of_use'. Each key should contain a one-sentence string.
+Turn 1 Assistant: Here is a JSON object summarizing the benefits of Python for data science:
+
+{
+  "libraries": "Python has an extensive library of tools for data analysis, including NumPy, Pandas, Matplotlib, Scikit-learn, and many more.",
+  "community": "The Python community is active and supportive, with many resources available online to help beginners and experts alike.",
+  "ease_of_use": "Python's simplicity and readability make it easy to learn and use for data science tasks."
+}
+
+
+==================================================

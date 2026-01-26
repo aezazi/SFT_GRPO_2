@@ -28,7 +28,7 @@ class MistralChat:
         base_model.resize_token_embeddings(len(self.tokenizer))
         
         # Load LoRA Adapters
-        adapter_path = MISTRAL_SFT_ROOT / "experiments" / "final_sft_model_v1"
+        adapter_path = MISTRAL_SFT_ROOT / "experiments" / "final_sft_model_v3_1epoch_svd_r"
         self.model = PeftModel.from_pretrained(base_model, str(adapter_path))
         self.model.eval()
 
