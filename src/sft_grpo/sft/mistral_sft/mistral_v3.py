@@ -13,8 +13,8 @@ import json
 
 # NEW: Import from your package
 from sft_grpo.config import HF_TOKEN
-from sft_grpo.sft.mistral.mistral_config import CUSTOM_TOKENIZER_V2_PATH, DATASET_DIR, MODEL_NAME, MISTRAL_SFT_ROOT
-from sft_grpo.sft.mistral.mistral_sft_utils import TruncatingCollator
+from sft_grpo.sft.mistral_sft.mistral_sft_config import CUSTOM_TOKENIZER_V2_PATH, DATASET_DIR, MODEL_NAME, MISTRAL_SFT_ROOT
+from sft_grpo.sft.mistral_sft.mistral_sft_utils import TruncatingCollator
 
 #%%
 # Load base model

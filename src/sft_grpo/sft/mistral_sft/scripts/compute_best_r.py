@@ -6,7 +6,7 @@ import numpy as np
 import time
 
 from sft_grpo.config import PACKAGE_ROOT, HF_TOKEN
-from sft_grpo.sft.mistral.mistral_config import MISTRAL_SFT_ROOT, MODEL_NAME
+from sft_grpo.sft.mistral_sft.mistral_sft_config import MISTRAL_SFT_ROOT, MODEL_NAME
 
 #%%
 # Load environment variables

@@ -4,7 +4,7 @@
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
-from sft_grpo.sft.mistral.mistral_config import MODEL_NAME, MISTRAL_SFT_ROOT, CUSTOM_TOKENIZER_V2_PATH
+from sft_grpo.sft.mistral_sft.mistral_sft_config import MODEL_NAME, MISTRAL_SFT_ROOT, CUSTOM_TOKENIZER_V2_PATH
 #%%
 # paths
 print(f'mddel name: {MODEL_NAME}')

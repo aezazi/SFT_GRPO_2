@@ -1,7 +1,7 @@
 #%%
 from transformers import AutoTokenizer
-from sft_grpo.sft.mistral.mistral_config import CUSTOM_TOKENIZER_V2_PATH,  MODEL_NAME
-from sft_grpo.sft.mistral.mistral_sft_utils import format_tokenize_with_spans
+from sft_grpo.sft.mistral_sft.mistral_sft_config import CUSTOM_TOKENIZER_V2_PATH,  MODEL_NAME
+from sft_grpo.sft.mistral_sft.mistral_sft_utils import format_tokenize_with_spans
 #%%
 #%%
 # load customized tokenizer and verify special tokens and chat template

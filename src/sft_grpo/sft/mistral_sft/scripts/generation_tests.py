@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
-from sft_grpo.sft.mistral.mistral_config import MODEL_NAME, MISTRAL_SFT_ROOT, CUSTOM_TOKENIZER_V2_PATH
+from sft_grpo.sft.mistral_sft.mistral_sft_config import MODEL_NAME, MISTRAL_SFT_ROOT, CUSTOM_TOKENIZER_V2_PATH
 
 # Configuration
 ADAPTER_PATH = MISTRAL_SFT_ROOT / "experiments" / "final_sft_model_v3_1epoch_svd_r"

@@ -7,7 +7,7 @@ import multiprocessing
 
 #%%
 from sft_grpo.config import HF_TOKEN, PACKAGE_ROOT
-from sft_grpo.sft.mistral.mistral_config import MODEL_NAME
+from sft_grpo.sft.mistral_sft.mistral_sft_config import MODEL_NAME
 
 print(HF_TOKEN)
 

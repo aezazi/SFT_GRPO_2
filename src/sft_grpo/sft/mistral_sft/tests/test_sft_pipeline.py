@@ -6,8 +6,8 @@ import torch
 from transformers import AutoTokenizer
 
 # UPDATED: Use the full package namespace
-from sft_grpo.sft.mistral import mistral_sft_utils as utils
-from sft_grpo.sft.mistral.mistral_config import CUSTOM_TOKENIZER_V2_PATH
+from sft_grpo.sft.mistral_sft import mistral_sft_utils as utils
+from sft_grpo.sft.mistral_sft.mistral_sft_config import CUSTOM_TOKENIZER_V2_PATH
 
 #%%
 # If your functions are inside mistral_sft_utils, call them like this:

@@ -10,8 +10,8 @@ import multiprocessing
 from pathlib import Path
 
 from sft_grpo.config import PACKAGE_ROOT, HF_TOKEN
-from sft_grpo.sft.mistral.mistral_config import MISTRAL_SFT_ROOT, MODEL_NAME
-from sft_grpo.sft.mistral.mistral_sft_utils import format_tokenize_with_spans
+from sft_grpo.sft.mistral_sft.mistral_sft_config import MISTRAL_SFT_ROOT, MODEL_NAME
+from sft_grpo.sft.mistral_sft.mistral_sft_utils import format_tokenize_with_spans
 
 #%%
 # Load environment variables
@@ -117,11 +117,11 @@ processed_eval = dataset_ultrachat["test_sft"].map(
 # print(type(path_test))
 # print(path_test)
 
-from sft_grpo.sft.mistral import mistral_config as m_cfg
+from sft_grpo.sft.mistral_sft import mistral_sft_config as m_cfg
 print(m_cfg.DATASET_DIR / "train_dataset_tokenized_v2")
 
 #%%
-from sft_grpo.sft.mistral import mistral_config as m_cfg
+from sft_grpo.sft.mistral_sft import mistral_sft_config as m_cfg
 print(m_cfg.DATASET_DIR)
 
 
