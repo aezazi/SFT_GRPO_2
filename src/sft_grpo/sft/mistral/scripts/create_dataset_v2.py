@@ -162,7 +162,7 @@ if 'input_ids' in processed_train.column_names:
     print(f"  Median: {sorted(token_lengths)[len(token_lengths)//2]}")
     
     # Count examples that exceed common context lengths
-    for threshold in [512, 1024, 2048, 4096]:
+    for threshold in [512, 1024, 2048, 3072, 4096]:
         count = sum(1 for length in token_lengths if length > threshold)
         print(f"  Examples > {threshold} tokens: {count} ({count/len(token_lengths)*100:.1f}%)")
 
