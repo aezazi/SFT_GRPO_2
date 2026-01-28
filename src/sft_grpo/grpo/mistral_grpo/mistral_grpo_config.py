@@ -22,9 +22,9 @@ LORA_SFT_ADAPTER_PATH = MISTRAL_SFT_ROOT/"experiments/final_sft_model_v3_1epoch_
 
 
 # Mistral-specific directories
-GRPO_CHECKPOINTS_DIR = MISTRAL_GRPO_ROOT / "checkpoints"
-GRPO_LOGS_DIR = MISTRAL_GRPO_ROOT / "logs"
-GRPO_EXPERIMENTS_DIR = MISTRAL_GRPO_ROOT / "experiments"
+GRPO_CHECKPOINTS_DIR = MISTRAL_GRPO_ROOT / "mistral_grpo_checkpoints"
+GRPO_LOGS_DIR = MISTRAL_GRPO_ROOT / "mistral_grpo_logs"
+GRPO_EXPERIMENTS_DIR = MISTRAL_GRPO_ROOT / "mistral_grpo_experiments"
 
 #%%
 # note that tokenizer and sft trained model are in the sft --> mistral_sft directory
