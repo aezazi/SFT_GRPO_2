@@ -9,9 +9,15 @@ from dotenv import load_dotenv
 import multiprocessing
 from pathlib import Path
 
-from sft_grpo.config import PACKAGE_ROOT, HF_TOKEN
-from sft_grpo.sft.mistral_sft.mistral_sft_config import MISTRAL_SFT_ROOT, MODEL_NAME
+from sft_grpo.sft.mistral_sft.mistral_sft_config import (
+    MISTRAL_SFT_ROOT, 
+    MODEL_NAME,
+    HF_TOKEN,
+    DATASET_DIR
+)
+
 from sft_grpo.sft.mistral_sft.mistral_sft_utils import format_tokenize_with_spans
+
 
 #%%
 # Load environment variables
@@ -117,12 +123,12 @@ processed_eval = dataset_ultrachat["test_sft"].map(
 # print(type(path_test))
 # print(path_test)
 
-from sft_grpo.sft.mistral_sft import mistral_sft_config as m_cfg
-print(m_cfg.DATASET_DIR / "train_dataset_tokenized_v2")
+# from sft_grpo.sft.mistral_sft import mistral_sft_config as m_cfg
+# print(m_cfg.DATASET_DIR / "train_dataset_tokenized_v2")
 
-#%%
-from sft_grpo.sft.mistral_sft import mistral_sft_config as m_cfg
-print(m_cfg.DATASET_DIR)
+# #%%
+# from sft_grpo.sft.mistral_sft import mistral_sft_config as m_cfg
+# print(m_cfg.DATASET_DIR)
 
 
 # save the unformatted and untokenized datasets
@@ -134,7 +140,7 @@ processed_train.save_to_disk(m_cfg.DATASET_DIR / "train_dataset_tokenized_v2")
 processed_eval.save_to_disk(m_cfg.DATASET_DIR / "test_dataset_tokenized_v2")
 
 # save the custom tokenizer
-tokenizer.save_pretrained(m_cfg.MISTRAL_SFT_ROOT/ "mistral_7B_customized_tokenizer_v2")
+tokenizer.save_pretrained(MISTRAL_SFT_ROOT/ "mistral_7B_customized_tokenizer_v2")
 
 # %%
 print(tokenizer.all_special_tokens)

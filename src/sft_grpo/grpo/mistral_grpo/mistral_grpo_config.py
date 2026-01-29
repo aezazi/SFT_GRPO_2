@@ -18,7 +18,7 @@ MISTRAL_GRPO_ROOT = Path(__file__).parent.resolve()
 # print(MISTRAL_GRPO_ROOT)
 
 # path to sft LoRA adapters
-LORA_SFT_ADAPTER_PATH = MISTRAL_SFT_ROOT/"experiments/final_sft_model_v3_1epoch_svd_r"
+LORA_SFT_ADAPTER_PATH = MISTRAL_SFT_ROOT/"mistral_sft_experiments/final_sft_model_v3_1epoch_svd_r"
 
 
 # Mistral-specific directories

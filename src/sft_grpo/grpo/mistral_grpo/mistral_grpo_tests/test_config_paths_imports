@@ -43,8 +43,7 @@ tokenizer.chat_template
 # test resizing base model and adding adapters
 base_model.resize_token_embeddings(len(tokenizer))
 model = PeftModel.from_pretrained(base_model, str(LORA_SFT_ADAPTER_PATH)).eval()
-
-#%%
+print(model)
 
 
 # %%
@@ -52,3 +51,6 @@ model = PeftModel.from_pretrained(base_model, str(LORA_SFT_ADAPTER_PATH)).eval()
 train_data = load_from_disk(DATASET_DIR / 'train_dataset_tokenized_v2')
 
 eval_data = load_from_disk(DATASET_DIR / 'test_dataset_tokenized_v2')
+print(train_data['input_ids'][1])
+
+# %%
