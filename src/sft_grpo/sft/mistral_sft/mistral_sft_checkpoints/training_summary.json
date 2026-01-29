@@ -1,0 +1,23 @@
+{
+  "start_time": "2026-01-25 21:50:34",
+  "end_time": "2026-01-26 19:50:37",
+  "duration_seconds": 79202.983555,
+  "total_steps": 1624,
+  "total_epochs": 1.0,
+  "best_eval_loss": 0.8681297302246094,
+  "final_train_loss": 0.8644,
+  "final_eval_loss": 0.8681297302246094,
+  "collator_stats": {
+    "total_examples": 346525,
+    "no_truncation": 340190,
+    "context_only_truncated": 1186,
+    "assistant_partial_loss": 5149,
+    "assistant_complete_loss": 0,
+    "skipped_no_labels": 0,
+    "no_truncation_pct": 98.17184907293846,
+    "context_only_truncated_pct": 0.34225524853906647,
+    "assistant_partial_loss_pct": 1.485895678522473,
+    "assistant_complete_loss_pct": 0.0,
+    "skipped_no_labels_pct": 0.0
+  }
+}

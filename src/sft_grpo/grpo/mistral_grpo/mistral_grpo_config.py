@@ -8,14 +8,14 @@ from dotenv import load_dotenv
 from sft_grpo.config import HF_TOKEN, PROJECT_ROOT
 from sft_grpo.sft.mistral_sft.mistral_sft_config import MISTRAL_SFT_ROOT
 
-print(HF_TOKEN)
-print(PROJECT_ROOT)
+# print(HF_TOKEN)
+# print(PROJECT_ROOT)
 
 #%%
 # Absolute path to .../src/sft_grpo/sft/mistral/
 MISTRAL_GRPO_ROOT = Path(__file__).parent.resolve()
 
-print(MISTRAL_GRPO_ROOT)
+# print(MISTRAL_GRPO_ROOT)
 
 # path to sft LoRA adapters
 LORA_SFT_ADAPTER_PATH = MISTRAL_SFT_ROOT/"experiments/final_sft_model_v3_1epoch_svd_r"

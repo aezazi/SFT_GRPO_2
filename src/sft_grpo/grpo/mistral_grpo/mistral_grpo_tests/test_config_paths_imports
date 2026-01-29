@@ -1,0 +1,54 @@
+#%%
+import torch
+import json
+from datetime import datetime
+from datasets import load_dataset, load_from_disk
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import PeftModel
+
+# from sft_grpo.config import HF_TOKEN, PROJECT_ROOT
+
+from sft_grpo.grpo.mistral_grpo.mistral_grpo_config import (
+    PROJECT_ROOT,
+    MISTRAL_GRPO_ROOT, 
+    MODEL_NAME, 
+    LORA_SFT_ADAPTER_PATH, 
+    CUSTOM_TOKENIZER_V2_PATH,
+    DATASET_DIR,
+    HF_TOKEN,
+
+)
+
+#%%
+# test loading base model
+base_model = AutoModelForCausalLM.from_pretrained(
+        MODEL_NAME, torch_dtype=torch.bfloat16, device_map="auto"
+    )
+#%%
+# test loading custom tokenizser
+tokenizer = AutoTokenizer.from_pretrained(CUSTOM_TOKENIZER_V2_PATH)
+
+print(tokenizer.all_special_tokens)
+print(tokenizer.all_special_ids)
+print(tokenizer.pad_token)
+
+#verify pad token is set eos token
+print(f'pad token set to eos token: {tokenizer.pad_token == tokenizer.eos_token}')
+print(f'pad token id set to eos token id: {tokenizer.pad_token_id == tokenizer.eos_token_id}')
+
+# check if the model tokenizer already has a chat template
+tokenizer.chat_template
+
+#%%
+# test resizing base model and adding adapters
+base_model.resize_token_embeddings(len(tokenizer))
+model = PeftModel.from_pretrained(base_model, str(LORA_SFT_ADAPTER_PATH)).eval()
+
+#%%
+
+
+# %%
+# load data sets
+train_data = load_from_disk(DATASET_DIR / 'train_dataset_tokenized_v2')
+
+eval_data = load_from_disk(DATASET_DIR / 'test_dataset_tokenized_v2')

@@ -6,8 +6,8 @@ from peft import PeftModel
 from sft_grpo.sft.mistral_sft.mistral_sft_config import MODEL_NAME, MISTRAL_SFT_ROOT, CUSTOM_TOKENIZER_V2_PATH
 
 # Configuration
-ADAPTER_PATH = MISTRAL_SFT_ROOT / "experiments" / "final_sft_model_v3_1epoch_svd_r"
-OUTPUT_FILE = f"eval_results_{datetime.now().strftime('%Y%m%d_%H%M')}.txt"
+ADAPTER_PATH = MISTRAL_SFT_ROOT / "mistral_sft_experiments" / "final_sft_model_v3_1epoch_svd_r"
+OUTPUT_FILE = f"{MISTRAL_SFT_ROOT}/mistral_sft_logs/generation_results_final_model_{datetime.now().strftime('%Y%m%d_%H%M')}.txt"
 
 TEST_CASES = [
     {
@@ -35,9 +35,10 @@ def run_evaluation():
     print("🚀 Loading model for final evaluation...")
     tokenizer = AutoTokenizer.from_pretrained(CUSTOM_TOKENIZER_V2_PATH)
     base_model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME, torch_dtype=torch.bfloat16, device_map="auto"
+        MODEL_NAME, dtype=torch.bfloat16, device_map="auto"
     )
     base_model.resize_token_embeddings(len(tokenizer))
+    print("Loading adapter from:", ADAPTER_PATH.resolve())
     model = PeftModel.from_pretrained(base_model, str(ADAPTER_PATH)).eval()
 
     with open(OUTPUT_FILE, "w") as f:
